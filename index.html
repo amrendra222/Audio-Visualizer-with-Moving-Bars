@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .visualizer-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            margin: 0 auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 1.1rem;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+
+        .settings {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .setting-group {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .setting-label {
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            margin: 5px 0;
+            accent-color: #ff6b6b;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: white;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .visualizer-container {
+                height: 300px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Audio Visualizer</h1>
+        <p class="subtitle">Upload your music and watch it come to life with dynamic bars</p>
+        
+        <div class="controls">
+            <button id="uploadBtn" class="btn">Upload Audio File</button>
+            <input type="file" id="audioFileInput" class="file-input" accept="audio/*">
+            <button id="playPauseBtn" class="btn" disabled>Play</button>
+            <button id="stopBtn" class="btn" disabled>Stop</button>
+        </div>
+        
+        <div class="visualizer-container">
+            <canvas id="visualizer"></canvas>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="settings">
+            <div class="setting-group">
+                <div class="setting-label">Bar Width</div>
+                <input type="range" id="barWidth" min="2" max="30" value="10">
+            </div>
+            
+            <div class="setting-group">
+                <div class="setting-label">Bar Spacing</div>
+                <input type="range" id="barSpacing" min="1" max="10" value="2">
+            </div>
+            
+            <div class="setting-group">
+                <div class="setting-label">Sensitivity</div>
+                <input type="range" id="sensitivity" min="1" max="10" value="5">
+            </div>
+            
+            <div class="setting-group">
+                <div class="setting-label">Color Theme</div>
+                <div class="color-picker">
+                    <div class="color-option active" style="background: linear-gradient(45deg, #ff6b6b, #ffa502)" data-theme="red"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #1e90ff, #70a1ff)" data-theme="blue"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #2ed573, #7bed9f)" data-theme="green"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #9b59b6, #8e44ad)" data-theme="purple"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #ff6348, #ff4757)" data-theme="orange"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const uploadBtn = document.getElementById('uploadBtn');
+            const audioFileInput = document.getElementById('audioFileInput');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const canvas = document.getElementById('visualizer');
+            const statusDiv = document.getElementById('status');
+            const barWidthSlider = document.getElementById('barWidth');
+            const barSpacingSlider = document.getElementById('barSpacing');
+            const sensitivitySlider = document.getElementById('sensitivity');
+            const colorOptions = document.querySelectorAll('.color-option');
+            
+            // Canvas setup
+            const ctx = canvas.getContext('2d');
+            let canvasWidth, canvasHeight;
+            
+            // Audio variables
+            let audioContext;
+            let audioSource;
+            let analyser;
+            let audioElement;
+            let isPlaying = false;
+            let animationId;
+            
+            // Visualizer settings
+            let barWidth = 10;
+            let barSpacing = 2;
+            let sensitivity = 5;
+            let colorTheme = 'red';
+            
+            // Color themes
+            const colorThemes = {
+                red: ['#ff6b6b', '#ffa502', '#ff6348'],
+                blue: ['#1e90ff', '#70a1ff', '#48dbfb'],
+                green: ['#2ed573', '#7bed9f', '#1dd1a1'],
+                purple: ['#9b59b6', '#8e44ad', '#6c5ce7'],
+                orange: ['#ff6348', '#ff4757', '#ff9ff3']
+            };
+            
+            // Initialize canvas size
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvasWidth = container.clientWidth;
+                canvasHeight = container.clientHeight;
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+            }
+            
+            // Initialize audio context
+            function initAudio() {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                
+                audioElement = new Audio();
+                audioSource = audioContext.createMediaElementSource(audioElement);
+                audioSource.connect(analyser);
+                analyser.connect(audioContext.destination);
+                
+                audioElement.addEventListener('ended', function() {
+                    isPlaying = false;
+                    playPauseBtn.textContent = 'Play';
+                    cancelAnimationFrame(animationId);
+                });
+            }
+            
+            // Draw visualizer
+            function drawVisualizer() {
+                animationId = requestAnimationFrame(drawVisualizer);
+                
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyser.getByteFrequencyData(dataArray);
+                
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                
+                const barCount = Math.floor(canvasWidth / (barWidth + barSpacing));
+                const colors = colorThemes[colorTheme];
+                
+                for (let i = 0; i < barCount; i++) {
+                    // Get frequency data for this bar
+                    const index = Math.floor(i * bufferLength / barCount);
+                    let value = dataArray[index];
+                    
+                    // Apply sensitivity
+                    value = value * (sensitivity / 5);
+                    
+                    // Calculate bar height
+                    const barHeight = (value / 255) * canvasHeight * 0.8;
+                    
+                    // Calculate position
+                    const x = i * (barWidth + barSpacing);
+                    const y = canvasHeight - barHeight;
+                    
+                    // Choose color based on amplitude
+                    const colorIndex = Math.floor((value / 255) * colors.length);
+                    const color = colors[Math.min(colorIndex, colors.length - 1)];
+                    
+                    // Draw bar
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y, barWidth, barHeight);
+                    
+                    // Add glow effect
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 15;
+                    ctx.fillRect(x, y, barWidth, barHeight);
+                    ctx.shadowBlur = 0;
+                }
+            }
+            
+            // File upload handler
+            uploadBtn.addEventListener('click', function() {
+                audioFileInput.click();
+            });
+            
+            audioFileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    
+                    if (file.type.startsWith('audio/')) {
+                        // Stop any current audio
+                        if (isPlaying) {
+                            stopAudio();
+                        }
+                        
+                        // Initialize audio if not already done
+                        if (!audioContext) {
+                            initAudio();
+                        }
+                        
+                        // Load the new audio file
+                        const fileURL = URL.createObjectURL(file);
+                        audioElement.src = fileURL;
+                        
+                        // Update UI
+                        playPauseBtn.disabled = false;
+                        stopBtn.disabled = false;
+                        showStatus(`Loaded: ${file.name}`);
+                        
+                        // Auto play
+                        playAudio();
+                    } else {
+                        showStatus('Please select an audio file', true);
+                    }
+                }
+            });
+            
+            // Play/Pause handler
+            playPauseBtn.addEventListener('click', function() {
+                if (isPlaying) {
+                    pauseAudio();
+                } else {
+                    playAudio();
+                }
+            });
+            
+            // Stop handler
+            stopBtn.addEventListener('click', function() {
+                stopAudio();
+            });
+            
+            // Audio control functions
+            function playAudio() {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                audioElement.play();
+                isPlaying = true;
+                playPauseBtn.textContent = 'Pause';
+                drawVisualizer();
+            }
+            
+            function pauseAudio() {
+                audioElement.pause();
+                isPlaying = false;
+                playPauseBtn.textContent = 'Play';
+                cancelAnimationFrame(animationId);
+            }
+            
+            function stopAudio() {
+                audioElement.pause();
+                audioElement.currentTime = 0;
+                isPlaying = false;
+                playPauseBtn.textContent = 'Play';
+                cancelAnimationFrame(animationId);
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            }
+            
+            // Settings handlers
+            barWidthSlider.addEventListener('input', function() {
+                barWidth = parseInt(this.value);
+            });
+            
+            barSpacingSlider.addEventListener('input', function() {
+                barSpacing = parseInt(this.value);
+            });
+            
+            sensitivitySlider.addEventListener('input', function() {
+                sensitivity = parseInt(this.value);
+            });
+            
+            // Color theme selection
+            colorOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    colorTheme = this.dataset.theme;
+                    
+                    // Update active class
+                    colorOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // Status message
+            function showStatus(message, isError = false) {
+                statusDiv.textContent = message;
+                statusDiv.style.display = 'block';
+                
+                if (isError) {
+                    statusDiv.style.background = 'rgba(255, 87, 87, 0.3)';
+                } else {
+                    statusDiv.style.background = 'rgba(46, 213, 115, 0.3)';
+                }
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Initial setup
+            resizeCanvas();
+        });
+    </script>
+</body>
+</html>
